@@ -1,0 +1,227 @@
+// Written by Kanv Yadav
+void detectObject(int & ultradistance)
+{
+motor[motorA] = 10;
+motor[motorC] = -10;
+wait10Msec(150);
+
+while(sensorValue[S1] > 57 );
+//stops when detects an object that’s at a distance less       than 57 cm
+ultradistance = SensorValue[S1];
+wait1Msec(1300);
+
+motor[motorA] = 0;
+motor[motorC] = 0;
+}
+
+//Written by Dhruv Sharma
+void approachObject(int & ultradistance , int &   
+currentEncoder)                                    
+{
+motor[motorA]=-25;	
+motor[motorC]=-25;
+/*motor speeds are negative for going forward because of the construction of the robot in a way that motors are attached in opposite manner*/
+
+int numCnts= (ultradistance - 16)*360/PI/3;
+
+while (nMotorEncoder[motorA] > (currentEncoder - numCnts)); 
+/*to stop the robot at a particular distance in front of the block*/
+
+motor[motorA] = 0;
+motor[motorC] = 0;
+}
+
+
+//Written by Suhaib Ishaque
+void returnCenter(int &currentEncoder)
+{
+motor[motorA]= 25;
+motor[motorC]= 25;
+
+while (nMotorEncoder[motorA] < currentEncoder);
+
+motor[motorA] = 0;
+motor[motorC] = 0;
+}
+
+
+
+
+
+
+//Written by Suhaib Ishaque
+void rotation(int currentEncoder, int rotate)		               
+/* function to calibrate the rotation in such a way that the claw finds its target block on reaching it */
+{
+if (rotate < 0)
+{
+motor[motorA] = -20;
+motor[motorC] = 20;
+while (nMotorEncoder[motorA] >  
+currentEncoder + rotate);
+}
+else
+{
+motor[motorA]=20;
+motor[motorC]=-20;
+while (nMotorEncoder[motorA] < 
+       currentEncoder + rotate);
+}
+}
+
+
+//Written by Kanv Yadav
+void liftObject(int &blockColor)
+{
+sendMessage(1);			
+//message sent to other NXT to start the lifting operation.
+//Parameter 1 is to denote lifting
+while(!bQueuedMsgAvailable());	
+//function waits for the message from the other NXT
+blockColor = message;
+}
+
+//Written by Kanv Yadav
+void dropObject()
+{
+sendMessage(2);			
+//send message to the other NXT to drop the block
+while(!bQueuedMsgAvailable());
+}
+
+
+//MAIN FUNCTION : Written by Dhruv Sharma
+task main()
+{
+sensorType[S1] = sensorSONAR;
+sensorType[S2] = sensorTouch;
+sensorType[S3] = sensorCOLORFULL;
+
+nMotorEncoder[motorA]=0;
+nMotorEncoder[motorC]=0;
+
+int boxColor = -2;
+int boxEncoder[3];
+int blockColor = -1;
+int currentEncoder = 0;
+int ultradistance=0;
+int rotationLego[29] ={-20,-60,0,-50,-50,-60,-70					            -70,-60,-60,-50,-50,-50,-70,
+                           -70,-60,-60,-60,-60,-20,-20,
+                           -20,-20,-20,-20,-25,30,30,30};
+	int rotate = 0;
+
+
+detectObject(ultradistance);
+rotate = rotationLego[ultradistance - 22];
+currentEncoder = nMotorEncoder[motorA];
+rotation (currentEncoder,rotate);
+
+currentEncoder = nMotorEncoder[motorA];
+
+approachObject(ultradistance , currentEncoder);
+
+liftObject(blockColor);
+
+returnCenter(currentEncoder);
+
+while(blockColor != boxColor)
+{
+detectObject(ultradistance);
+
+rotate = rotationLego[ultradistance - 22];
+currentEncoder = nMotorEncoder[motorA];
+rotation(currentEncoder , rotate);
+
+currentEncoder = nMotorEncoder[motorA];
+
+approachObject(ultradistance , currentEncoder);
+
+wait1Msec(1000);
+boxColor = sensorValue[S3];		//detectcolor
+
+if(boxColor == blockColor)
+{
+dropObject();
+}
+
+returnCenter(currentEncoder);
+
+}
+
+}
+
+
+
+
+
+
+
+
+
+
+//Code for NXT responsible for Claw movement
+
+//Written by Bhavishey Thapar
+task main()
+{
+SensorType[S1]=sensorCOLORFULL;
+  	int comm = 0;
+  	int color = -1;
+
+  	while(true)
+  	{
+   		while(!bQueuedMsgAvailable());
+    		comm = message;
+
+		//for Lifting Objects
+    		if(comm == 1)
+    		{
+      		nMotorEncoder[motorA]=0;
+     		nMotorEncoder[motorC]=0;
+
+      		motor[motorA]=-15;
+      		motor[motorC]=30;
+
+      		while(nMotorEncoder[motorA] > -40);
+
+     		motor[motorC]=0;
+      		motor[motorA]=0;
+
+      		wait10Msec(250);
+
+      		color = message;
+
+     		motor[motorA]=10;
+
+      		wait10Msec(100);
+
+      		motor[motorC]=-10;
+      		while(nMotorEncoder[motorC] > 0);
+
+
+      		motor[motorA]=0;
+      		motor[motorC]=0;
+
+      		clearMessage();
+      		sendMessageWithParm(color);					//color is sent as a parameter to the Other NXT
+
+    		}
+
+//for Dropping Objects
+    		else if(comm == 2)
+    		{
+      		motor[motorA]=-10;
+  			motor[motorC]=25;
+  			wait10Msec(25);
+  			motor[motorA]=10;
+  			motor[motorC]=-25;
+  			wait10Msec(25);
+
+  			clearMessage();
+
+  			sendMessageWithParm(6);
+
+  		}
+
+}
+}
